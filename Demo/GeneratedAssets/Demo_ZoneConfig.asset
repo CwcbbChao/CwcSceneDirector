@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 536bb203db442b34998e4db2770859ad, type: 3}
+  m_Name: Demo_ZoneConfig
+  m_EditorClassIdentifier: 
+  _interactableConfig:
+    _items:
+    - _weight: 15
+      _minLimit: 0
+      _maxLimit: 0
+      _payload:
+        _prefab: {fileID: 1080600792784486977, guid: 0878662a35c2cca4dae1c30f64da7596,
+          type: 3}
+        _mode: 1
+  _encounterConfig:
+    _items:
+    - _weight: 15
+      _payload:
+        _mode: 0
+        _spreadRadius: 5
+        _members:
+        - _count: 1
+          _unit: {fileID: 11400000, guid: 66ac30730fe482144837370718ef3a96, type: 2}
+        - _count: 3
+          _unit: {fileID: 11400000, guid: d8cfcaf0e5f8b7f4899af075be48bc47, type: 2}
+    - _weight: 30
+      _payload:
+        _mode: 0
+        _spreadRadius: 4
+        _members:
+        - _count: 4
+          _unit: {fileID: 11400000, guid: d8cfcaf0e5f8b7f4899af075be48bc47, type: 2}
+    - _weight: 15
+      _payload:
+        _mode: 0
+        _spreadRadius: 5
+        _members:
+        - _count: 1
+          _unit: {fileID: 11400000, guid: 66ac30730fe482144837370718ef3a96, type: 2}
+        - _count: 3
+          _unit: {fileID: 11400000, guid: d8cfcaf0e5f8b7f4899af075be48bc47, type: 2}
+    - _weight: 30
+      _payload:
+        _mode: 0
+        _spreadRadius: 4
+        _members:
+        - _count: 4
+          _unit: {fileID: 11400000, guid: d8cfcaf0e5f8b7f4899af075be48bc47, type: 2}
+    - _weight: 15
+      _payload:
+        _mode: 0
+        _spreadRadius: 5
+        _members:
+        - _count: 1
+          _unit: {fileID: 11400000, guid: 66ac30730fe482144837370718ef3a96, type: 2}
+        - _count: 3
+          _unit: {fileID: 11400000, guid: d8cfcaf0e5f8b7f4899af075be48bc47, type: 2}
+    - _weight: 30
+      _payload:
+        _mode: 0
+        _spreadRadius: 4
+        _members:
+        - _count: 4
+          _unit: {fileID: 11400000, guid: d8cfcaf0e5f8b7f4899af075be48bc47, type: 2}

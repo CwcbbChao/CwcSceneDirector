@@ -1,0 +1,27 @@
+{
+  "name": "com.cwcbb.cwcscenedirector",
+  "version": "1.0.0",
+  "displayName": "CwcSceneDirector - Scene Content & AI Spawning Director",
+  "description": "A high-performance, modular scene generation and AI spawning director system for Unity. Features Diablo IV-inspired quota shuffle & macro Poisson/FPS sampling, Risk of Rain 2-style credit-budget dynamic encounters with target lock & overdraft, 2.5D chunked spatial point cloud perception, and zero-allocation frame-budget time slicing.",
+  "unity": "2021.3",
+  "unityRelease": "0f1",
+  "keywords": [
+    "director",
+    "spawner",
+    "encounter",
+    "procedural",
+    "poisson",
+    "credit-system",
+    "spatial",
+    "ai",
+    "dungeon",
+    "risk-of-rain"
+  ],
+  "author": {
+    "name": "Cwcbb",
+    "url": "https://github.com/CwcbbChao"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "samples": [],
+  "dependencies": {}
+}

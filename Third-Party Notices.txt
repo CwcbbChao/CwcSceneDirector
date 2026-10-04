@@ -1,0 +1,8 @@
+Third-Party Notices
+===================
+
+This package does not bundle external third-party proprietary assets or external dependencies.
+
+1. Built-in Demo Assets:
+   - All 3D meshes, prefabs, and materials in the Demo module are constructed using native Unity 3D primitives (Cubes, Spheres, Capsules) and custom shaders/materials.
+   - Designed for showcase and testing purposes without external copyright restrictions.

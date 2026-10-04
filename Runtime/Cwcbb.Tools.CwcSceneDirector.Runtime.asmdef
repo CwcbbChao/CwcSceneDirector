@@ -1,0 +1,14 @@
+{
+    "name": "Cwcbb.Tools.CwcSceneDirector.Runtime",
+    "rootNamespace": "Cwcbb.Tools.CwcSceneDirector",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

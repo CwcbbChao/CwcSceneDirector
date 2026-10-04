@@ -1,0 +1,20 @@
+{
+    "name": "Cwcbb.Tools.CwcSceneDirector.Demo.Editor",
+    "rootNamespace": "Cwcbb.Tools.CwcSceneDirector.Demo.Editor",
+    "references": [
+        "Cwcbb.Tools.CwcSceneDirector.Runtime",
+        "Cwcbb.Tools.CwcSceneDirector.Editor",
+        "Cwcbb.Tools.CwcSceneDirector.Demo"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

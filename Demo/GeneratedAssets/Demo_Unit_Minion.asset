@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 937135d13a720a84589efd6bba06e684, type: 3}
+  m_Name: Demo_Unit_Minion
+  m_EditorClassIdentifier: 
+  _unitName: Demo_Unit_Minion
+  _prefab: {fileID: 5673603381436837452, guid: 427389ce3eb7a45459d5df24b8f727f5, type: 3}
+  _baseCost: 1
