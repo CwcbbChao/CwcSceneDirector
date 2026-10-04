@@ -1,4 +1,4 @@
-# CwcSceneDirector - Scene Content & AI Spawning Director System
+# CwcSceneDirector - Scene Placement & Dynamic AI Spawning Director
 
 [![Unity 2021.3+](https://img.shields.io/badge/Unity-2021.3%2B-blue.svg)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Custom%20(Free%20for%20Games)-blue.svg)](LICENSE)
@@ -8,86 +8,76 @@
 
 ---
 
-## Overview
+## What Does It Do?
 
-`CwcSceneDirector` is a **high-performance, modular, pure C#-driven** scene content placement and dynamic AI spawning director system designed for Unity.
+When making dungeons, Roguelites, open-world games, or combat encounters, developers frequently need to:
+1. **Place things in the scene**: Scatter chests, shrines, resource nodes, or traps with **even distribution, controlled ratios, proper wall alignment, and never floating over cliffs**.
+2. **Spawn enemies during combat**: Like in *Risk of Rain 2* or *Diablo IV*, dynamically spawn minions and elites with **squad formations, pacing that slows when players struggle and speeds up when they clear fast, and zero frame drops**.
 
-The system combines the macro candidate sampling and quota-deck shuffling algorithms of **Diablo IV** with the credit-budget and wave-pacing mechanisms of **Risk of Rain 2**. It unifies macro candidate sampling, micro tactical formations, physical ground validation, entity pooling, and distance-based culling into a clean, decoupled execution pipeline. Ideal for Roguelite dungeons, open-world combat encounters, chest placements, and world events.
-
-The core framework is built entirely on pure C# classes and interfaces, has **zero external project dependencies**, supports on-demand lazy creation, and runs with zero garbage collection allocations.
+`CwcSceneDirector` is an open-source Unity package designed specifically for these workflows. It is **pure C#-driven, lightweight, high-performance, and works out of the box**.
 
 ---
 
-## Core Features
+## Key Problems It Solves
 
-### 1. Diablo IV Two-Level Placement & Quota Deck
-- **Two-Level Separation**: Decouples macro cluster candidate selection from micro squad dispersal based on tactical formations and physical bounding footprints.
-- **Quota Deck Algorithm**:
-  - **Phase 1 (Guaranteed Limits)**: Satisfies mandatory `MinLimit` quotas first;
-  - **Phase 2 (Proportional Weights)**: Distributes remaining quotas proportionally by `Weight` to items that haven't hit their `MaxLimit`;
-  - **Phase 3 (Shuffling)**: Shuffles the deck using Fisher-Yates randomization. Ensures controlled overall output ratios while maintaining natural unpredictability.
+### 1. Chests & Props: Controlled Ratios, Never Clumping
+- **Shuffled Quota Deck**: Configure item ratios such as 70% wooden chests, 20% gold chests, and 10% shrines, with strict rules like "at least 1 shrine guaranteed, at most 2 gold chests total". The system allocates the items upfront and shuffles them like a deck of cards, eliminating bad RNG where only gold chests spawn or no shrines appear.
+- **Smart Alignment & Wall Snapping**:
+  - **Free**: Places objects flush on the ground with mutual spacing to prevent overlaps.
+  - **WallSnapped**: Finds the nearest wall, snaps flush against it, and **automatically turns the object to face inward toward the room**.
+  - **OpenCenter**: Finds the most open, flat area in the center of a room.
 
-### 2. Risk of Rain 2-Inspired Credit Director
-- **Target-Lock Anti-Starvation**: When a high-cost elite is rolled but concurrent capacity is full, the director locks the target and waits for players to clear enemies, preventing high-cost monsters from starving due to narrow spawn windows.
-- **Soft-Cap Overdraft**: Allows purchasing an entire squad and overdrawing the budget into negative values when remaining budget is greater than zero, avoiding deadlocks with leftover fractional credits.
-- **Unidirectional Budget Audit**: Credits are not deducted upfront. The entity manager deducts budget based on the actual `ThreatCost` when an entity activates from the pool, ensuring exact accounting.
-- **Wave Breathing Cooldown**: Introduces physiological cooldown timers after each wave, working alongside `MaxConcurrentCost` to produce well-paced combat flow.
+### 2. Dynamic Spawning & Encounters: Pacing Over Brainless Swarms
+- **Credit Budget & Concurrency Caps**: Give the director a total budget (e.g., 60 total threat points for an encounter) and an on-screen cap (e.g., maximum 15 points active at once).
+- **Pacing with Breathing Room**: When the player is overwhelmed, the director pauses spawns until enemies are cleared. A configurable wave cooldown prevents monsters from constantly trickling in.
+- **Anti-Starvation for Elites**: If a high-cost boss or elite squad is rolled but on-screen capacity is full, the director **locks and queues the elite** until the player clears enough minions to free up space. Expensive enemies never get skipped by cheap ones.
+- **Budget Overdraft**: When nearing the end of an encounter with only 2 points left, if a 5-point squad is rolled, the director allows "overdrawing" the budget to spawn the full squad, avoiding deadlocks with leftover fractional points.
+- **No Face-Spawning**: A safe inner radius ensures enemies never spawn directly on top of the player.
 
-### 3. Spacious Farthest Point Sampling (Spacious-FPS)
-- Combines **local ground point cloud fullness (representing room area)** with **Farthest Point Sampling (FPS)** to prioritize placing cluster centers in large room clearings.
-- Spreads spawns evenly across rooms while preventing clusters in narrow hallways, using pure point-cloud topology analysis without physics raycast overhead.
+### 3. Natural Formations: Elites Centered, Minions Spreading
+- **Sunflower Vogel Spiral**: When a squad spawns, the elite stands firmly in the center while minions circle outward like sunflower petals with uniform density, avoiding single-point stacking.
+- **Inward Wall Bouncing**: If the outer edge of a formation hits a wall or obstacle, minions automatically bounce inward toward the center.
+- **Zero-Drop Fallback**: If extreme terrain blocks a spot, replacement points are automatically sampled nearby to guarantee that all configured units are spawned.
 
-### 4. Sunflower / Vogel Golden Spiral Formations
-- Micro squad dispersion utilizes the $137.5^\circ$ golden angle sunflower spiral (Vogel Spiral). Large monsters stay centered ($r = 0$), while minions spiral outward with uniform areal density.
-- **Inward Bounce**: When outer points strike walls or ledges, they automatically pull inward toward the cluster center.
-- **Fallback Recovery ("No Monster Left Behind")**: If extreme terrain blocks a spot, replacement points are sampled within the spread radius to ensure full squad counts are spawned without losing units.
+### 4. Footprint Auto-Detection & Ledge Probes: Grounded Every Time
+- **Zero Extra Scripts on Prefabs**: Automatically calculates footprint radius from native `Collider`, `CharacterController`, or `Renderer` bounds.
+- **Four-Way Ledge Checks**: Before placing an object, downward probes check the perimeter. If any point hangs over a void or drops off a steep cliff, the spot is rejected, eliminating monsters stuck mid-air over chasms.
 
-### 5. Physical Footprint Auto-Detection & Ledge Safety Probing
-- **Automatic Footprint Detection**: Computes clearance radius $R$ directly from native `Collider`, `CharacterController`, or `Renderer` bounds without requiring marker interfaces or custom components on prefabs.
-- **Ledge Safety Probes (`IsLedgeSafe`)**: Employs four downward probes offset by radius $R$. Any point hanging over voids or exceeding step thresholds is rejected, eliminating floating or cliff-edge spawns.
-- **Wall Snapping (`TrySnapToWall`)**: Pushes objects back by radius $R$ for flush alignment against walls, automatically facing toward open interior space.
+### 5. Time-Sliced Frame Budget: Smooth Spawning Without Lag
+- Traditional `Instantiate` calls in a single frame cause noticeable stutter.
+- Built-in time-slicing (default 2.0ms per frame) batches spawns when the frame is smooth and yields (`yield return null`) to the next frame when time runs low, maintaining rock-solid frame rates.
 
-### 6. High-Performance 2D Spatial Hash Grid & 2.5D World Chunks
-- **2D Spatial Hash Grid (`CwcSpatialGrid`)**: Partitions entities on the X-Z plane with pooled lists, providing near $O(1)$ zero-allocation queries for nearby units and threat costs.
-- **2.5D World Chunks (`CwcSpatialChunk`)**: Lazy-scans walkable terrain and supports localized invalidation for dynamic obstacles and environment destruction.
-
-### 7. Time-Sliced Frame Budgeting
-- The runtime context (`CwcPlacementContext`) includes a high-precision `Stopwatch`. It yields control (`yield return null`) only when the frame budget (default 2.0ms) is exceeded, achieving rapid instantiation without dropping frames.
-
-### 8. Centralized Entity Pooling & Distance-Based Culling
-- Entities outside the focus target's culling radius trigger automatic `Despawn()` back into the pool. Features spawn grace periods (`_cullGracePeriod`) and boss exemptions (`AllowCulling = false`).
-- Neatly organizes the scene hierarchy by prefab categories.
-
-### 9. Modern Card PropertyDrawer & Runtime Monitor Inspector
-- Compact custom card drawer featuring type-based accent colors (cyan for interactables, orange for credit squads, purple for generic items), inline weight inputs, foldouts, and script jump navigation.
-- Live editor inspector displays module status (Running / Paused / Completed) and execution order with manual debug controls.
+### 6. Built-in Pooling & Distance Culling
+- When enemies move too far from the player (e.g., beyond 60m), they automatically return to the pool without requiring manual pooling code.
+- Includes spawn grace periods and boss exemption flags to prevent accidental despawns.
 
 ---
 
 ## Installation
 
-### Option A: Via Unity Package Manager (Git URL Recommended)
+### Option A: Via Unity Package Manager (Recommended)
 1. In the Unity Editor, open `Window` -> `Package Manager`.
-2. Click the `+` button in the upper-left corner -> Select **Add package from git URL...**.
+2. Click the `+` button in the top-left corner -> Select **Add package from git URL...**.
 3. Enter the repository URL:
    ```text
    https://github.com/CwcbbChao/CwcSceneDirector.git
    ```
 4. Click **Add** to install.
 
-### Option B: Direct Source Import
+### Option B: Copy Files Directly
 Clone or copy the `CwcSceneDirector` directory directly into your project's `Assets/` or `Packages/` folder.
 
 ---
 
 ## Quick Start
 
-### 1. Static Interactable / Chest Weighted Placement
+### Scenario 1: Placing Chests and Shrines in a Dungeon
+
 ```csharp
 using UnityEngine;
 using Cwcbb.Tools.CwcSceneDirector;
 
-public class DungeonChestSpawner : MonoBehaviour
+public class ChestSpawner : MonoBehaviour
 {
     [SerializeField] private GameObject _woodenChestPrefab;
     [SerializeField] private GameObject _goldChestPrefab;
@@ -95,82 +85,86 @@ public class DungeonChestSpawner : MonoBehaviour
 
     private void Start()
     {
-        // Create placement module: 40m radius from current position, up to 12 clusters, 8m minimum distance
-        var placementModule = new CwcWeightedPlacementModule(
+        // 1. Create module: 35m radius, up to 10 clusters, at least 7m apart
+        var placement = new CwcWeightedPlacementModule(
             center: transform.position,
-            radius: 40f,
-            minClusterDistance: 8f,
-            maxClusters: 12
+            radius: 35f,
+            minClusterDistance: 7f,
+            maxClusters: 10
         );
 
-        // Standard chest: Weight 70, wall-snapped, 1 per cluster
-        placementModule.AddItem(new CwcInteractablePlacementItem(_woodenChestPrefab, weight: 70, mode: PlacementMode.WallSnapped));
+        // 2. Wooden chests: Weight 70, snap to walls
+        placement.AddItem(new CwcInteractablePlacementItem(_woodenChestPrefab, weight: 70, mode: PlacementMode.WallSnapped));
 
-        // Gold chest: Weight 20, wall-snapped, 1 per cluster, maximum 2
-        var goldChestItem = new CwcInteractablePlacementItem(_goldChestPrefab, weight: 20, mode: PlacementMode.WallSnapped);
-        goldChestItem.MaxLimit = 2;
-        placementModule.AddItem(goldChestItem);
+        // 3. Gold chests: Weight 20, snap to walls, capped at 2 maximum
+        var goldChest = new CwcInteractablePlacementItem(_goldChestPrefab, weight: 20, mode: PlacementMode.WallSnapped);
+        goldChest.MaxLimit = 2;
+        placement.AddItem(goldChest);
 
-        // Shrine: Weight 10, open ground, guaranteed at least 1
-        var shrineItem = new CwcInteractablePlacementItem(_shrinePrefab, weight: 10, mode: PlacementMode.OpenCenter);
-        shrineItem.MinLimit = 1;
-        placementModule.AddItem(shrineItem);
+        // 4. Buff shrines: Weight 10, open clearing, guaranteed at least 1
+        var shrine = new CwcInteractablePlacementItem(_shrinePrefab, weight: 10, mode: PlacementMode.OpenCenter);
+        shrine.MinLimit = 1;
+        placement.AddItem(shrine);
 
-        // Register to the scene director (automatically cleans up upon completion)
-        CwcSceneDirector.Register(placementModule);
+        // 5. Register to the director (cleans up automatically when done)
+        CwcSceneDirector.Register(placement);
     }
 }
 ```
 
-### 2. Dynamic Monster Wave / Encounter Spawner
+---
+
+### Scenario 2: Risk of Rain-Style Combat Encounter Wave
+
 ```csharp
 using UnityEngine;
 using Cwcbb.Tools.CwcSceneDirector;
 
-public class ArenaEncounterSpawner : MonoBehaviour
+public class MonsterEncounter : MonoBehaviour
 {
     [SerializeField] private GameObject _minionPrefab;
-    [SerializeField] private GameObject _elitePrefab;
-    [SerializeField] private Transform _playerTransform;
+    [SerializeField] private GameObject _bossPrefab;
+    [SerializeField] private Transform _player;
 
-    private CwcCreditDirectorModule _encounterModule;
+    private CwcCreditDirectorModule _director;
 
-    public void StartEncounter()
+    public void StartWave()
     {
-        // Create credit director: Follows player, 30m outer radius, 8m inner safe radius, 60 total budget, 15 concurrent cap
-        _encounterModule = new CwcCreditDirectorModule(
-            center: _playerTransform.position,
-            radius: 30f,
-            totalBudget: 60,
-            maxConcurrentCost: 15,
+        // 1. Create director: Follows player, 28m outer radius, 7m safe inner radius, 50 total budget, 14 concurrent cap
+        _director = new CwcCreditDirectorModule(
+            center: _player.position,
+            radius: 28f,
+            totalBudget: 50,
+            maxConcurrentCost: 14,
             minWaveCost: 2,
-            minRadius: 8f,
-            centerTarget: _playerTransform
+            minRadius: 7f,
+            centerTarget: _player
         );
 
-        // Set wave breathing cooldown to 3.0 seconds
-        _encounterModule.SetWaveCooldown(3.0f);
+        // 2. Wave breathing cooldown: 3.5s pause between waves
+        _director.SetWaveCooldown(3.5f);
 
-        // Minions: 1 cost each, weight 80, 4 per squad (squad cost 4)
-        _encounterModule.AddItem(new CwcCreditPrefabPlacementItem(_minionPrefab, cost: 4, weight: 80, count: 4));
+        // 3. Squad rosters:
+        // Minion squad: 3 minions per squad, costs 3 points, weight 80
+        _director.AddItem(new CwcCreditPrefabPlacementItem(_minionPrefab, cost: 3, weight: 80, count: 3));
 
-        // Elite: 5 cost each, weight 20, 1 per squad (squad cost 5), spawns in open ground
-        _encounterModule.AddItem(new CwcCreditPrefabPlacementItem(_elitePrefab, cost: 5, weight: 20, count: 1, mode: PlacementMode.OpenCenter));
+        // Elite: Costs 6 points, weight 20, 1 per squad, spawns in open areas
+        _director.AddItem(new CwcCreditPrefabPlacementItem(_bossPrefab, cost: 6, weight: 20, count: 1, mode: PlacementMode.OpenCenter));
 
-        // Event callbacks for budget depletion and completion
-        _encounterModule.OnBudgetDepleted += () => Debug.Log("Warning: Enemy reinforcements have been exhausted!");
-        _encounterModule.OnClearedAndCompleted += () => Debug.Log("Victory! All enemies defeated!");
+        // 4. Event listeners
+        _director.OnBudgetDepleted += () => Debug.Log("Reinforcements depleted!");
+        _director.OnClearedAndCompleted += () => Debug.Log("All enemies cleared, victory!");
 
-        // Register and activate director
-        CwcSceneDirector.Register(_encounterModule);
+        // 5. Start the director
+        CwcSceneDirector.Register(_director);
     }
 
-    public void StopEncounter()
+    public void StopWave()
     {
-        if (_encounterModule != null)
+        if (_director != null)
         {
-            CwcSceneDirector.Unregister(_encounterModule);
-            _encounterModule = null;
+            CwcSceneDirector.Unregister(_director);
+            _director = null;
         }
     }
 }
@@ -178,40 +172,37 @@ public class ArenaEncounterSpawner : MonoBehaviour
 
 ---
 
-## Demo Showcase
+## Configuration Reference
 
-- **Scene Path**: `Assets/CwcPlugins/CwcSceneDirector/Demo/Demo_SceneDirector.unity`.
-- **Out of the Box**: Ready to play immediately after importing the package.
-- **Keyboard Controls**:
-  - **I**: Spawns uniformly distributed chests and interactables across the six dungeon chambers;
-  - **C**: Clears all spawned chests in the scene;
-  - **E**: Activates the dynamic monster encounter wave;
-  - **K**: Stops the active encounter;
-  - **X**: Simulates clearing all active enemies on screen.
-- **Fully Decoupled**: The Demo module uses its own assembly definitions (`.asmdef`). Core `Runtime` and `Editor` modules have zero reverse dependencies on the demo.
+| Parameter | Meaning | Recommendation |
+| :--- | :--- | :--- |
+| `PlacementMode.Free` | **Free ground**: Places flush on terrain with clearance checks | Common enemies, rocks, wildlife |
+| `PlacementMode.WallSnapped` | **Wall snapped**: Snaps flush against walls, facing room interior | Chests, bookshelves, torches, doors |
+| `PlacementMode.OpenCenter` | **Open clearing**: Avoids walls and narrow corridors, centers in open areas | Large bosses, altars, focal shrines |
+| `MinLimit / MaxLimit` | **Guaranteed min / hard ceiling**: Overrides random weights | Guarantee at least 1 shrine, cap gold chests at 2 |
+| `totalBudget` | **Total budget**: Total points for the encounter | Small fight: 30~50, large swarm: 100~200 |
+| `maxConcurrentCost` | **Concurrent cap**: Director pauses when active units hit this value | Prevents overwhelming the player |
+| `minRadius` | **Inner safe radius**: Minimum spawn distance from target | 6m~10m to prevent instant face-spawns |
+| `SetWaveCooldown` | **Wave cooldown**: Breathing room between spawn batches | 2.5s~4.0s for good combat pacing |
 
 ---
 
-## Core Architecture & Responsibilities
+## Demo Showcase Scene
 
-| Class | Role | Description |
-| :--- | :--- | :--- |
-| `CwcSceneDirector` | Core Scheduling Hub | MonoBehaviour-driven manager supporting lazy creation, priority sorting, and pause/resume |
-| `CwcSceneDirectorModule` | Abstract Module Base | Pure C# logic container with full lifecycle hooks and coroutine support |
-| `CwcWeightedPlacementModule` | One-Shot Placement Module | Diablo IV quota deck shuffling with guarantees, proportional weights, and auto-cleanup |
-| `CwcCreditDirectorModule` | Dynamic Credit Director | Risk of Rain 2 encounter director with target lock, overdraft, and wave cooldown |
-| `CwcSceneEntityManager` | Entity Pool & Cull Manager | Centralized pool hierarchy, distance-based culling, focus tracking, and threat cost aggregation |
-| `CwcSpatialGrid` | 2D Spatial Hash Grid | Horizontal 2D hash grid providing near $O(1)$ zero-allocation entity queries |
-| `CwcSceneSpatialManager` | 2.5D Chunked Point Cloud | World-chunk terrain scanner providing Spacious-FPS and localized invalidation |
-| `CwcPlacementSpatialUtil` | Spatial Geometry Utilities | Algorithm library for Poisson sampling, Vogel spiral, footprint detection, and ledge probing |
-| `IPlacementStrategy` | Polymorphic Placement Policy | Strategy pattern contract with `Free`, `WallSnapped`, and `OpenCenter` implementations |
-| `CwcPlacementContext` | Runtime Context | Carries scheduling hosts, physics settings, and high-precision frame-budget timers |
+The package includes a self-contained dungeon showcase:
+- **Scene File**: `Assets/CwcPlugins/CwcSceneDirector/Demo/Demo_SceneDirector.unity`.
+- **Keyboard Controls**:
+  - Press **I**: Spawns evenly spaced chests across the dungeon;
+  - Press **C**: Clears all spawned chests;
+  - Press **E**: Starts the dynamic combat wave;
+  - Press **K**: Stops the combat wave;
+  - Press **X**: Eliminates all enemies (tests victory callback).
 
 ---
 
 ## License & Commercial Use
 
-- The core source code is licensed under the [Cwc Tools Public License (Source-Available)](LICENSE):
-  - **Game Projects (End Products)**: Free to integrate, customize, and commercially distribute in personal and commercial games with zero royalties (Royalty-Free).
-  - **Redistribution Restrictions (No Redistribution as Tools)**: You may not redistribute, resell, or host this software (modified or unmodified) as a standalone development tool, asset pack, or competing library.
-- See [Third-Party Notices.txt](Third-Party%20Notices.txt) for asset licensing details.
+- Core source code is licensed under the [Cwc Tools Public License (Source-Available)](LICENSE):
+  - **Game Projects (End Products)**: **Free to use in personal and commercial games with zero royalties (Royalty-Free)**.
+  - **No Tool Resale**: You may not repackage or resell this software as a standalone asset pack, development tool, or plugin on marketplaces.
+- See [Third-Party Notices.txt](Third-Party%20Notices.txt) for details.

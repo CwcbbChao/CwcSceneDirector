@@ -1,4 +1,4 @@
-# CwcSceneDirector - 场景内容生成与动态刷怪导演系统
+# CwcSceneDirector - 场景内容摆放与动态刷怪导演系统
 
 [![Unity 2021.3+](https://img.shields.io/badge/Unity-2021.3%2B-blue.svg)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-Custom%20(Free%20for%20Games)-blue.svg)](LICENSE)
@@ -8,169 +8,164 @@
 
 ---
 
-## 插件简介
+## 它是用来做什么的？
 
-`CwcSceneDirector` 是一个专为 Unity 研发的**高性能、模块化、纯 C# 驱动**的场景内容摆放与 AI 动态刷怪导演系统。
+在制作地牢、肉鸽、开放世界或关卡游戏时，我们经常需要：
+1. **在场景里摆东西**：随机撒宝箱、神龛、资源矿石或陷阱，要求**分布均匀、不扎堆、比例受控、靠墙对齐、不刷在悬崖外**。
+2. **在战斗中刷怪**：像《雨中冒险2》或《暗黑破坏神4》一样，根据战斗节奏动态刷出小怪与精英怪，要求**大怪带小怪有阵型、玩家打得慢就暂缓出怪、玩家杀得快就快速补充、大批量出怪绝不掉帧**。
 
-系统深度融合了**《暗黑破坏神 4》（Diablo IV）**的大地图两级选点与洗牌配额算法，以及**《雨中冒险 2》（Risk of Rain 2）**的 AI 信用点预算与波次调度机制。它将宏观空间选点、微观战术阵型、物理环境校验、实体对象池与超距自动淘汰高度内聚为统一的调度管线，专为肉鸽地牢、开放世界遭遇战、地下城宝箱生成及世界狂潮事件提供工业级解决方案。
-
-核心框架完全由纯 C# 类与接口驱动，**无任何外部项目业务依赖**，支持按需懒创建与零 GC 运行。
+`CwcSceneDirector` 就是为了解决这些痛点而生的 Unity 开源插件。它是一个**纯 C# 驱动、轻量高性能、开箱即用**的场景生成调度系统。
 
 ---
 
-## 核心设计特性
+## 核心功能解决的痛点
 
-### 1. 暗黑 4 两级选点与洗牌配额牌堆（Quota Deck）
-- **宏观与微观两级分离**：先在宏观区域内采集均匀候选群落中心，再在微观散开半径内根据阵型和物理底盘展开小队，层次清晰。
-- **配额牌堆算法**：
-  - **第一阶段（保底）**：优先满足各条目的 `MinLimit` 强制保底名额；
-  - **第二阶段（权重）**：剩余名额按 `Weight` 权重分配给未达 `MaxLimit` 上限的条目；
-  - **第三阶段（洗牌）**：采用 Fisher-Yates 随机打乱发牌。既保证宏观产出比绝对受控，又具备不可预测的自然探索感。
+### 1. 摆宝箱与场景物件：按比例洗牌，绝不扎堆
+- **按比例洗牌发牌**：例如设置“木宝箱 70%、金宝箱 20%、神秘神龛 10%”，并且可以强制指定“神龛至少保底 1 个，金宝箱全图最多 2 个”。系统像发牌一样把名额分配好再随机打乱，绝不会出现全图全都是金宝箱或全图没有神龛的极端运气情况。
+- **智能避让与靠墙对齐**：
+  - **自由模式（Free）**：平整贴地放置，物体之间保持安全间距。
+  - **贴墙模式（WallSnapped）**：自动寻找附近的墙壁，严丝合缝靠墙摆好，并且**自动背靠墙壁、面向室内开阔区域**。
+  - **开阔地模式（OpenCenter）**：自动寻找房间最空旷平坦的腹地正中心摆放。
 
-### 2. 雨中冒险 2 动态信用点刷怪机制（Credit Director）
-- **目标锁定防饥饿机制（Target Lock）**：当骰选出高费精英怪（High Cost）而同屏容量暂不可用时，系统会自动锁定该目标并等待玩家清怪释放战力容量，彻底杜绝高费大怪因刷新窗口狭窄而永远无法出场的“饥饿问题”。
-- **软上限与负蓝透支（Soft Cap Overdraft）**：剩余总预算大于 0 时，允许整队买下并透支到负数，避免关卡尾声残留微量预算导致怪群卡死。
-- **实收单向审计（Accurate Budget Consumption）**：不提前预扣预算，各单位出池激活时由实体管理器按实际生成的真实 `ThreatCost` 自动扣费，实生多少扣多少。
-- **波次呼吸冷却（Wave Cooldown）**：每波生成后引入生理冷却时间，结合同屏在场容量上限 `MaxConcurrentCost`，形成张弛有度的战斗心流。
+### 2. 动态刷怪与遭遇战：张弛有度，拒绝无脑堆怪
+- **战力预算与在场上限控制**：给导演一个总预算（例如本场遭遇战总战力 60 点），以及同屏在场战力上限（例如同屏最多 15 点）。
+- **呼吸感战斗节奏**：玩家杀怪慢、压力大时，场上战力超标，导演会自动停止刷新，给玩家喘息时间；每波怪物生成后有“呼吸冷却期”，不会像水龙头漏水一样连续不断地贴脸出怪。
+- **大怪防饥饿机制**：如果抽中了高费大怪或精英小队，但当前同屏剩余容量不够，导演会**锁定该大怪排队等待**，等玩家击杀小怪腾出空间后立即放行，绝不会因为小怪便宜而把大怪永远挤掉。
+- **预算透支机制**：战斗快结束时，哪怕只剩 2 点预算，只要抽中了一队 5 点的怪群，导演也会允许直接“借款买下”整队刷出，杜绝尾声残留微小预算导致卡住不刷怪。
+- **不贴脸刷新**：支持内环安全距离，怪物绝不会直接骑脸刷在玩家脚底。
 
-### 3. 开阔腹地加权最远点采样（Spacious-FPS）
-- 结合**地面点云局部饱满度（代表腹地面积）**与**空间最远点离散度（Farthest Point Sampling）**，自动优先挑选各大房间开阔腹地正中心。
-- 天然跨房间均衡扩散，杜绝大房间不刷、小走廊扎堆卡位的业界通病；全程纯点云拓扑分析，零物理射线开销。
+### 3. 自然好看的怪群阵型：大怪居中，小怪环绕
+- **向日葵螺旋阵型**：一队怪刷出时，精英大怪稳居中心，随从随行小怪像向日葵花瓣一样均匀向外展开，全队疏密一致，绝不叠成一个点。
+- **撞墙自动往中间缩（弹性回弹）**：如果阵型外圈撞到了墙壁或障碍物，小怪会自动沿半径向中心聚拢收紧。
+- **绝不吞怪保底**：如果极端地形导致某个小怪放不下，系统会在散开范围内自动重新寻找平坦地面补足名额，严格保证配置几只就刷出几只。
 
-### 4. 葵花黄金角螺旋点阵与弹性回弹（Sunflower / Vogel Spiral）
-- 微观小队生成采用黄金角（$137.5^\circ$）葵花螺旋点阵（Vogel Spiral），大怪稳居中心（$r = 0$），小怪等比向外旋绕展开，全阵列面密度处处均等。
-- **弹性向心收缩（Inward Bounce）**：外圈点遇到墙体或悬崖时，自动向中心向量回缩收紧。
-- **满额保底补齐（No Monster Left Behind）**：若极端地形依然受阻，在散开半径内随机采样平地补足名额，严格落实绝不吞怪原则。
+### 4. 物理底盘自适应与悬崖防空：踩不到实地绝不刷
+- **免挂脚本，自动识别大小**：无需在预制体上挂任何特定脚本，系统自动根据怪物或宝箱自身的碰撞盒（Collider）、角色控制器（CharacterController）或网格大小，算出它的占地半径。
+- **四角悬空探测**：生成前自动向物体四周发射下沉探针，如果脚底踩空（悬浮在悬崖深渊之上）或者台阶高低落差过大，直接放弃该点，彻底根治怪物刷新在悬崖半空中卡模的 Bug。
 
-### 5. 原生物理底盘自适应与悬崖防空下沉探针
-- **原生物理底盘提取**：自动从原生 `Collider`、`CharacterController` 或 `Renderer` 包围盒反推底盘占用半径 $R$，预制体无需挂载任何标记组件或实现接口。
-- **悬崖防空下沉探针（`IsLedgeSafe`）**：以半径 $R$ 向四个正交方向发射下沉探针，若悬空入虚空或台阶落差过大直接否决候选点，彻底根治怪物刷新在悬崖半空的浮空穿模问题。
-- **靠墙相切吸附（`TrySnapToWall`）**：以自身半径 $R$ 自动推开严丝合缝贴墙，并自动调整背墙朝向面向室内开阔腹地。
+### 5. 分帧时间预算：连续刷几十只怪也绝不掉帧
+- 传统的 Instantiate 如果在同一帧生成几十只怪物，游戏会产生明显的顿卡。
+- 本插件自带分帧时间预算控制（默认单帧预算 2.0 毫秒）。当帧时间充裕时，极速同帧连出；单帧时间耗尽时，自动暂停并顺延到下一帧继续出怪，全过程丝滑流畅。
 
-### 6. 高性能 2D 空间哈希网格与 2.5D 世界分块点云
-- **2D 空间哈希网格（`CwcSpatialGrid`）**：以 X-Z 水平面进行哈希网格分区，维护对象池化列表，实现区域实体与累计战力开销的近似 $O(1)$ 复杂度零 GC 查询。
-- **2.5D 世界分块（`CwcSpatialChunk`）**：按需懒加载探测场景地貌与可行走区域，支持局部区域主动失效与动态障碍物实时更新。
-
-### 7. 分帧时间预算调度（Time-Sliced Frame Budgeting）
-- 运行时上下文（`CwcPlacementContext`）内建高精度 `Stopwatch`，单帧耗时超出性能预算（默认 2.0ms）时才主动出让控制权（`yield return null`），时间充裕时同帧批量生成，兼具极速生成与绝不掉帧。
-
-### 8. 集中化对象池与超距自动淘汰回收（Cull & Despawn）
-- 超出关注目标（玩家）判定距离后自动触发实体 `Despawn()` 归池，自带新出池保护缓冲期（`_cullGracePeriod`）与 Boss 豁免标记（`AllowCulling = false`）。
-- 场景 Hierarchy 树按预制体名分类收纳，井井有条。
-
-### 9. 现代卡片式 PropertyDrawer 与运行时监控面板
-- 提供紧凑美观的卡片式自定义属性绘制器，根据类型智能匹配强调色（交互物为天蓝，信用点敌群为红橙，通用为蓝紫），支持内联权重编辑与脚本溯源跳转。
-- 提供运行时实时监视面板，动态查看各模块运行状态（Running / Paused / Completed）与优先级，支持一键调试干预。
+### 6. 内置对象池与超距自动回收
+- 怪物远离玩家超出设定距离（例如 60 米）后，会自动回收归池，不需要开发者手写对象池代码。
+- 自带出生保护期（新刷出的怪不会瞬间被回收）以及 Boss 豁免标记（关键敌人永久不被回收）。
 
 ---
 
 ## 安装方式
 
-### 方式 A：通过 Unity Package Manager (Git URL 推荐)
+### 方式 A：通过 Unity Package Manager (推荐)
 1. 打开 Unity 编辑器菜单栏：`Window` -> `Package Manager`。
 2. 点击左上角 `+` 号 -> 选择 **Add package from git URL...**。
-3. 输入仓库地址：
+3. 填入仓库地址：
    ```text
    https://github.com/CwcbbChao/CwcSceneDirector.git
    ```
-4. 点击 **Add** 即可完成自动安装。
+4. 点击 **Add** 等待安装完成。
 
-### 方式 B：源码直接导入
+### 方式 B：直接复制代码
 将 `CwcSceneDirector` 文件夹直接放入项目的 `Assets/` 或 `Packages/` 目录下即可。
 
 ---
 
-## 快速上手 (Quick Start)
+## 快速上手
 
-### 1. 静态交互物 / 宝箱加权洗牌摆放
+### 场景一：在地下城里摆宝箱和神龛（一次性加权摆放）
+
 ```csharp
 using UnityEngine;
 using Cwcbb.Tools.CwcSceneDirector;
 
-public class DungeonChestSpawner : MonoBehaviour
+public class ChestSpawner : MonoBehaviour
 {
-    [SerializeField] private GameObject _woodenChestPrefab;
-    [SerializeField] private GameObject _goldChestPrefab;
-    [SerializeField] private GameObject _shrinePrefab;
+    [SerializeField] private GameObject _woodenChestPrefab; // 普通木宝箱
+    [SerializeField] private GameObject _goldChestPrefab;   // 黄金大宝箱
+    [SerializeField] private GameObject _shrinePrefab;      // 增益神龛
 
     private void Start()
     {
-        // 创建一次性摆放模块：以当前位置为中心，半径 40m，最多摆放 12 个群落，间距至少 8m
-        var placementModule = new CwcWeightedPlacementModule(
+        // 1. 创建摆放模块：以当前位置为中心，半径 35 米内，最多摆放 10 个点，每个点之间至少隔 7 米
+        var placement = new CwcWeightedPlacementModule(
             center: transform.position,
-            radius: 40f,
-            minClusterDistance: 8f,
-            maxClusters: 12
+            radius: 35f,
+            minClusterDistance: 7f,
+            maxClusters: 10
         );
 
-        // 添加普通宝箱：权重 70，靠墙放置，每点 1 个
-        placementModule.AddItem(new CwcInteractablePlacementItem(_woodenChestPrefab, weight: 70, mode: PlacementMode.WallSnapped));
+        // 2. 添加普通木宝箱：权重 70，自动贴墙摆放
+        placement.AddItem(new CwcInteractablePlacementItem(_woodenChestPrefab, weight: 70, mode: PlacementMode.WallSnapped));
 
-        // 添加黄金宝箱：权重 20，靠墙放置，每点 1 个，最多允许 2 个
-        var goldChestItem = new CwcInteractablePlacementItem(_goldChestPrefab, weight: 20, mode: PlacementMode.WallSnapped);
-        goldChestItem.MaxLimit = 2;
-        placementModule.AddItem(goldChestItem);
+        // 3. 添加黄金大宝箱：权重 20，贴墙摆放，全图最多只允许出 2 个
+        var goldChest = new CwcInteractablePlacementItem(_goldChestPrefab, weight: 20, mode: PlacementMode.WallSnapped);
+        goldChest.MaxLimit = 2;
+        placement.AddItem(goldChest);
 
-        // 添加开阔地神龛：权重 10，开阔地放置，保底 1 个
-        var shrineItem = new CwcInteractablePlacementItem(_shrinePrefab, weight: 10, mode: PlacementMode.OpenCenter);
-        shrineItem.MinLimit = 1;
-        placementModule.AddItem(shrineItem);
+        // 4. 添加增益神龛：权重 10，放在开阔地中心，全图至少保底出 1 个
+        var shrine = new CwcInteractablePlacementItem(_shrinePrefab, weight: 10, mode: PlacementMode.OpenCenter);
+        shrine.MinLimit = 1;
+        placement.AddItem(shrine);
 
-        // 注册到场景总导演执行调度（摆放完毕后模块将自动销毁退出）
-        CwcSceneDirector.Register(placementModule);
+        // 5. 注册到导演执行！（生成完毕后该模块会自动销毁，不占后续运行资源）
+        CwcSceneDirector.Register(placement);
     }
 }
 ```
 
-### 2. 动态敌群狂潮 / 遭遇战调度
+---
+
+### 场景二：做一场像《雨中冒险》一样的刷怪遭遇战
+
 ```csharp
 using UnityEngine;
 using Cwcbb.Tools.CwcSceneDirector;
 
-public class ArenaEncounterSpawner : MonoBehaviour
+public class MonsterEncounter : MonoBehaviour
 {
-    [SerializeField] private GameObject _minionPrefab;
-    [SerializeField] private GameObject _elitePrefab;
-    [SerializeField] private Transform _playerTransform;
+    [SerializeField] private GameObject _minionPrefab; // 普通小怪
+    [SerializeField] private GameObject _bossPrefab;   // 精英大怪
+    [SerializeField] private Transform _player;        // 玩家 Transform
 
-    private CwcCreditDirectorModule _encounterModule;
+    private CwcCreditDirectorModule _director;
 
-    public void StartEncounter()
+    public void StartWave()
     {
-        // 创建信用点导演：跟随玩家位置，外环 30m，内环安全距离 8m，总预算 60 点，同屏在场战力上限 15 点
-        _encounterModule = new CwcCreditDirectorModule(
-            center: _playerTransform.position,
-            radius: 30f,
-            totalBudget: 60,
-            maxConcurrentCost: 15,
+        // 1. 创建刷怪导演：
+        // 跟随玩家位置，最远 28 米，内环 7 米（防贴脸），总预算 50 点，同屏最多在场 14 点战力
+        _director = new CwcCreditDirectorModule(
+            center: _player.position,
+            radius: 28f,
+            totalBudget: 50,
+            maxConcurrentCost: 14,
             minWaveCost: 2,
-            minRadius: 8f,
-            centerTarget: _playerTransform
+            minRadius: 7f,
+            centerTarget: _player
         );
 
-        // 设置波次呼吸冷却为 3.0 秒
-        _encounterModule.SetWaveCooldown(3.0f);
+        // 2. 设置波次呼吸时间：每波刷怪之间休息 3.5 秒
+        _director.SetWaveCooldown(3.5f);
 
-        // 普通小怪：单只消耗 1 点，权重 80，每队 4 只（小队总消耗 4 点）
-        _encounterModule.AddItem(new CwcCreditPrefabPlacementItem(_minionPrefab, cost: 4, weight: 80, count: 4));
+        // 3. 配置怪群编制：
+        // 普通小怪队：每队 3 只，整队消耗 3 点战力，权重 80
+        _director.AddItem(new CwcCreditPrefabPlacementItem(_minionPrefab, cost: 3, weight: 80, count: 3));
 
-        // 强力精英：单只消耗 5 点，权重 20，每队 1 只（小队总消耗 5 点），开阔地生成
-        _encounterModule.AddItem(new CwcCreditPrefabPlacementItem(_elitePrefab, cost: 5, weight: 20, count: 1, mode: PlacementMode.OpenCenter));
+        // 精英大怪：单只消耗 6 点战力，权重 20，每队 1 只，优先在开阔地刷出
+        _director.AddItem(new CwcCreditPrefabPlacementItem(_bossPrefab, cost: 6, weight: 20, count: 1, mode: PlacementMode.OpenCenter));
 
-        // 事件监听：总预算耗尽与清场结算
-        _encounterModule.OnBudgetDepleted += () => Debug.Log("警告：敌群援军已断绝！");
-        _encounterModule.OnClearedAndCompleted += () => Debug.Log("恭喜！所有敌人肃清完毕，遭遇战通关！");
+        // 4. 监听关卡事件
+        _director.OnBudgetDepleted += () => Debug.Log("援军用尽，不再产生新敌人！");
+        _director.OnClearedAndCompleted += () => Debug.Log("全场敌人肃清，战斗胜利，升起通关宝箱！");
 
-        // 注册并激活导演
-        CwcSceneDirector.Register(_encounterModule);
+        // 5. 启动导演！
+        CwcSceneDirector.Register(_director);
     }
 
-    public void StopEncounter()
+    public void StopWave()
     {
-        if (_encounterModule != null)
+        if (_director != null)
         {
-            CwcSceneDirector.Unregister(_encounterModule);
-            _encounterModule = null;
+            CwcSceneDirector.Unregister(_director);
+            _director = null;
         }
     }
 }
@@ -178,40 +173,37 @@ public class ArenaEncounterSpawner : MonoBehaviour
 
 ---
 
-## 演示示例体验 (Demo Scene)
+## 常用参数说明
 
-- **场景路径**：`Assets/CwcPlugins/CwcSceneDirector/Demo/Demo_SceneDirector.unity`。
-- **开箱即用**：导入插件后可直接双击打开该场景体验，无需额外配置或解压。
-- **键盘操作热键**：
-  - **I**：一键在全图地牢六大区域生成分布均匀的交互物与宝箱；
-  - **C**：一键清除当前场景中的所有宝箱；
-  - **E**：激活敌群遭遇战（暗黑狂潮与雨险 AI Director 联动）；
-  - **K**：强制中止当前遭遇战；
-  - **X**：一键模拟清场（击杀当前场上所有敌人）。
-- **完全解耦**：Demo 模块包含独立的程序集定义（`.asmdef`），核心 `Runtime` 与 `Editor` 模块对 Demo 零反向依赖。
-
----
-
-## 核心架构与类职责表
-
-| 类名 | 职责定位 | 说明 |
+| 参数项 | 说明 | 推荐设置 |
 | :--- | :--- | :--- |
-| `CwcSceneDirector` | 场景总导演核心调度器 | MonoBehaviour 驱动，支持懒创建、运行时优先级排序、全局与单模块暂停/恢复 |
-| `CwcSceneDirectorModule` | 导演模块抽象基类 | 纯 C# 类逻辑载体，声明生命周期与协同协程支持 |
-| `CwcWeightedPlacementModule` | 一次性加权摆放模块 | 暗黑 4 配额牌堆洗牌算法，支持保底、权重分配与上限封顶，摆放完毕后自销毁 |
-| `CwcCreditDirectorModule` | 动态信用点导演模块 | 雨中冒险 2 遭遇战机制，支持目标锁定防饥饿、负蓝透支、单向实收审计与波次冷却 |
-| `CwcSceneEntityManager` | 场景实体对象池与超距管理器 | 集中管理对象池分类层级、超距自动淘汰回收、关注目标追踪与总威胁度统计 |
-| `CwcSpatialGrid` | 2D 空间哈希网格 | 基于 X-Z 平面的空间哈希分区，提供近似 $O(1)$ 复杂度的实体查询与战力汇总，零 GC |
-| `CwcSceneSpatialManager` | 2.5D 世界分块点云空间感知器 | 分块懒探测地表地貌，提供开阔腹地加权最远点采样（Spacious-FPS）与局部失效刷新 |
-| `CwcPlacementSpatialUtil` | 空间选点与物理几何工具库 | 泊松盘、葵花黄金角螺旋点阵、底盘自适应、悬崖防空探针与靠墙相切算法库 |
-| `IPlacementStrategy` | 摆放物理策略多态契约 | 策略模式接口，内置 `Free`（自由）、`WallSnapped`（靠墙）与 `OpenCenter`（开阔地） |
-| `CwcPlacementContext` | 运行时执行上下文 | 携带总调度宿主与物理配置，提供单帧时间预算监控（`ShouldYield`）防掉帧 |
+| `PlacementMode.Free` | **自由放置**：贴地平整摆放，物体间防重叠互斥 | 适用于大多数杂兵、小石头、野怪 |
+| `PlacementMode.WallSnapped` | **靠墙放置**：自动找墙，严丝合缝推开贴好，背墙朝向 | 适用于宝箱、书架、路灯、墙角火把 |
+| `PlacementMode.OpenCenter` | **开阔地放置**：自动避开墙角与狭窄过道，选择腹地正中心 | 适用于大体积 Boss、祭坛、核心神龛 |
+| `MinLimit / MaxLimit` | **强制保底 / 最大封顶上限**：无论随机数如何，必须在区间内 | 保底神龛至少 1 个，限制金宝箱最多 2 个 |
+| `totalBudget` | **总战力预算**：本场遭遇战总额度，扣完即停止刷怪 | 小型战斗 30~50，大型狂潮 100~200 |
+| `maxConcurrentCost` | **同屏战力上限**：场上怪物战力达到该值时，导演自动等待 | 控制同屏怪物密度，避免淹没玩家 |
+| `minRadius` | **内环安全半径**：怪物出生的最小距离 | 建议 6m~10m，防止怪物突然贴脸骑脸刷新 |
+| `SetWaveCooldown` | **波次呼吸冷却**：每波生成后的休息时间 | 建议 2.5s~4.0s，给玩家合理的战斗节奏 |
 
 ---
 
-## 许可协议与商用授权
+## 演示示例场景 (Demo Scene)
 
-- 本项目核心源码采用 [Cwc Tools Public License (Source-Available)](LICENSE) 许可：
-  - **商业游戏发布（End Products）**：允许个人及商业游戏项目免费集成使用并发布商用，免收任何版税（Royalty-Free）。
-  - **二次分发限制（No Redistribution as Tools）**：严禁以任何形式将本插件本体或修改版本作为独立开发工具、SDK、资产包或竞品插件进行二次分发、公开镜像或转售。
-- 完整第三方声明详见 [Third-Party Notices.txt](Third-Party%20Notices.txt)。
+插件自带完整的地牢演示场景，导入后可直接体验全部功能：
+- **场景文件**：`Assets/CwcPlugins/CwcSceneDirector/Demo/Demo_SceneDirector.unity`。
+- **键盘操作**：
+  - 按 **I**：全图均匀摆放宝箱；
+  - 按 **C**：一键清除所有宝箱；
+  - 按 **E**：开启敌群遭遇战（体验动态预算与波次出怪）；
+  - 按 **K**：停止遭遇战；
+  - 按 **X**：一键击杀全场敌人（测试清场通关结算）。
+
+---
+
+## 许可协议与商用说明
+
+- 核心代码遵循 [Cwc Tools Public License (Source-Available)](LICENSE) 许可协议：
+  - **开发游戏（End Products）**：**个人或商业游戏项目均可免费使用，免版税（Royalty-Free）**，无需支付任何费用。
+  - **二次转售限制**：禁止将本插件或修改版本作为独立的资产包、开发工具、插件包发布到 Asset Store、商店或其它公开平台转售。
+- 详细说明请查阅 [Third-Party Notices.txt](Third-Party%20Notices.txt)。
